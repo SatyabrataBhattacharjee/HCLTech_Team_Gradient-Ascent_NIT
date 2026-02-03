@@ -2,12 +2,12 @@ name: Hourly Retraining Pipeline
 
 on:
   schedule:
-    - cron: "0 * * * *"   # Every hour
+    - cron: "0 * * * *"   # Every hour (UTC)
   workflow_dispatch:
   push:
     paths-ignore:
-      - "models/promoted/**"
-      - "models/current_model.txt"
+      - "models/**"
+      - "logs/**"
 
 jobs:
   retrain:
@@ -52,20 +52,28 @@ jobs:
           python -m src.orchestration.retrain_pipeline
 
       # -----------------------------------
-      # Commit Only Promoted Model
+      # Commit Experiments + Logs + Promotion
       # -----------------------------------
-      - name: Commit promoted model safely
+      - name: Commit artifacts safely
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
 
+          # Stage experiment runs
+          git add models/experiments || true
+
+          # Stage promoted models
           git add models/promoted || true
           git add models/current_model.txt || true
 
+          # Stage logs
+          git add logs || true
+
+          # Exit if nothing changed
           if git diff --cached --quiet; then
-            echo "No model changes to commit."
+            echo "No changes to commit."
             exit 0
           fi
 
-          git commit -m "Automated retraining: promoted new model"
+          git commit -m "Automated retraining: logged experiment + promotion"
           git push origin main
