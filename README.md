@@ -1,5 +1,4 @@
-# 📊 End-to-End Data Science & MLOps Pipeline
-
+##Team Gradient Ascent HCLTech Repository
 This repository follows a **structured, industry-style data science and MLOps workflow**, starting from problem understanding and database design, moving through analytics and modeling, and ending with **CI/CD-enabled real-time deployment using PostgreSQL and FastAPI**.
 
 The flow below mirrors the complete lifecycle shown in the system design diagram.
@@ -214,3 +213,4 @@ This project demonstrates a **complete, real-world data science and MLOps lifecy
 - Real-time deployment
 
 It is designed to reflect **how ML systems are actually built and operated in production environments**.
+
