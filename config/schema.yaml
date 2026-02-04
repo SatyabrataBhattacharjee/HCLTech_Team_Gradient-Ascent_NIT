@@ -20,20 +20,19 @@ categorical_features:
 
 
 dtypes:
-  customer_id: int
+
   quantity: float
   line_net_amount: float
   total_items: float
   total_cost: float
-  Customer_Name: string
-  Customer_Category: string
+
+
   loyalty_status: string
-  City: string
-  Store_Type: string
+
   product_name: string
   payment_method: string
   discount_applied: boolean
-  season: string
+
 
 constraints:
   quantity:
