@@ -39,7 +39,7 @@ def pull_batch():
         last_id = _get_last_processed_id(conn)
 
         query = text("""
-            SELECT * FROM housing_data
+            SELECT * FROM customer_7day_summary
             WHERE id > :last_id
             ORDER BY id
             LIMIT :limit
