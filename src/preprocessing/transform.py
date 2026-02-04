@@ -12,17 +12,18 @@ SCHEMA_PATH = CONFIG_DIR / "schema.yaml"
 
 def preprocess(df: pd.DataFrame):
     """
-    Prepare data for model ingestion based on customer_7day_summary schema.
-    Returns (X, y).
+    Preprocess customer_7day_summary dataset for model ingestion.
+    Grain: one row per customer
+    Returns (X, y)
     """
 
+    # -----------------------------
+    # Empty check
+    # -----------------------------
     if df is None or df.empty:
         log_message("Preprocessing skipped: DataFrame empty.")
         log_event("PREPROCESS_SKIPPED", {"reason": "empty_dataframe"})
         return pd.DataFrame(), pd.Series(dtype=float)
-
-    # Drop non-feature columns if present
-
 
     # -----------------------------
     # Load schema
@@ -30,42 +31,69 @@ def preprocess(df: pd.DataFrame):
     with open(SCHEMA_PATH, "r") as f:
         schema = yaml.safe_load(f)
 
-    features = schema["features"]
+    numerical_features = schema["numerical_features"]
+    categorical_features = schema["categorical_features"]
     target = schema["target"]
 
+    features = numerical_features + categorical_features
     required_columns = features + [target]
-    missing_columns = set(required_columns) - set(df.columns)
 
+    # -----------------------------
+    # Drop non-schema columns
+    # -----------------------------
+    df = df[ [c for c in df.columns if c in required_columns] ].copy()
+
+    # -----------------------------
+    # Schema validation
+    # -----------------------------
+    missing_columns = set(required_columns) - set(df.columns)
     if missing_columns:
         raise Exception(f"Preprocessing error: Missing columns {missing_columns}")
 
     # -----------------------------
-    # Enforce column selection
+    # Split X and y
     # -----------------------------
     X = df[features].copy()
     y = df[target].astype(float)
 
     # -----------------------------
-    # Basic type normalization (SAFE)
+    # Type normalization
     # -----------------------------
-    if "discount_applied" in X.columns:
-        X["discount_applied"] = X["discount_applied"].astype(bool)
+    for col in numerical_features:
+        if col in X.columns:
+            X[col] = pd.to_numeric(X[col], errors="coerce")
 
-    # Optional: ensure categorical columns are strings
-    categorical_cols = schema.get("categorical_features", [])
-    for col in categorical_cols:
+    for col in categorical_features:
         if col in X.columns:
             X[col] = X[col].astype(str)
 
+    # Boolean normalization
+    if "discount_applied" in X.columns:
+        X["discount_applied"] = X["discount_applied"].astype(bool)
+
+    # -----------------------------
+    # Constraint enforcement
+    # -----------------------------
+    constraints = schema.get("constraints", {})
+    for col, rule in constraints.items():
+        if col in X.columns and "min" in rule:
+            if (X[col] < rule["min"]).any():
+                raise Exception(
+                    f"Constraint violation: {col} has values < {rule['min']}"
+                )
+
+    # -----------------------------
+    # Logging
+    # -----------------------------
     log_message(f"Preprocessing completed. Rows processed: {len(df)}")
     log_event(
         "PREPROCESS_COMPLETED",
         {
             "rows_processed": len(df),
             "features_used": features,
-            "target": target
+            "target": target,
+            "grain": "one_row_per_customer"
         }
     )
 
     return X, y
-
