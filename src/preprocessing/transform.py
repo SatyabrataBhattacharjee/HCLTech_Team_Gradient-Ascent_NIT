@@ -12,7 +12,7 @@ SCHEMA_PATH = CONFIG_DIR / "schema.yaml"
 
 def preprocess(df: pd.DataFrame):
     """
-    Split incoming DataFrame into X and y based on schema.
+    Prepare data for model ingestion based on customer_7day_summary schema.
     Returns (X, y).
     """
 
@@ -20,9 +20,16 @@ def preprocess(df: pd.DataFrame):
         log_message("Preprocessing skipped: DataFrame empty.")
         log_event("PREPROCESS_SKIPPED", {"reason": "empty_dataframe"})
         return pd.DataFrame(), pd.Series(dtype=float)
-    df = df.drop(columns=["id", "created_at"], errors="ignore")
 
+    # Drop non-feature columns if present
+    df = df.drop(
+        columns=["id", "created_at", "customer_id"],
+        errors="ignore"
+    )
+
+    # -----------------------------
     # Load schema
+    # -----------------------------
     with open(SCHEMA_PATH, "r") as f:
         schema = yaml.safe_load(f)
 
@@ -35,13 +42,33 @@ def preprocess(df: pd.DataFrame):
     if missing_columns:
         raise Exception(f"Preprocessing error: Missing columns {missing_columns}")
 
-    # Drop DB-specific columns like id, created_at if present
-    df = df.copy()
+    # -----------------------------
+    # Enforce column selection
+    # -----------------------------
+    X = df[features].copy()
+    y = df[target].astype(float)
 
-    X = df[features]
-    y = df[target]
+    # -----------------------------
+    # Basic type normalization (SAFE)
+    # -----------------------------
+    if "discount_applied" in X.columns:
+        X["discount_applied"] = X["discount_applied"].astype(bool)
+
+    # Optional: ensure categorical columns are strings
+    categorical_cols = schema.get("categorical_features", [])
+    for col in categorical_cols:
+        if col in X.columns:
+            X[col] = X[col].astype(str)
 
     log_message(f"Preprocessing completed. Rows processed: {len(df)}")
-    log_event("PREPROCESS_COMPLETED", {"rows_processed": len(df)})
+    log_event(
+        "PREPROCESS_COMPLETED",
+        {
+            "rows_processed": len(df),
+            "features_used": features,
+            "target": target
+        }
+    )
 
     return X, y
+
