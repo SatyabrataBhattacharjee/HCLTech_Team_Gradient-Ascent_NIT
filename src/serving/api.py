@@ -70,11 +70,20 @@ def home(request: Request):
 @app.post("/predict", response_class=HTMLResponse)
 def predict(
     request: Request,
-    size: float = Form(...),
-    bedrooms: int = Form(...),
-    age: float = Form(...),
-    location_score: float = Form(...),
-    income_index: float = Form(...)
+
+    # Numerical
+    quantity: float = Form(...),
+    line_net_amount: float = Form(...),
+    total_items: float = Form(...),
+
+    # Categorical
+
+    loyalty_status: str = Form(...),
+
+
+    payment_method: str = Form(...),
+    discount_applied: bool = Form(...),
+
 ):
     if model is None:
         return templates.TemplateResponse(
@@ -86,12 +95,18 @@ def predict(
             }
         )
 
+    # -----------------------------
+    # Build input dataframe
+    # -----------------------------
     input_df = pd.DataFrame([{
-        "size": size,
-        "bedrooms": bedrooms,
-        "age": age,
-        "location_score": location_score,
-        "income_index": income_index
+        "quantity": quantity,
+        "line_net_amount": line_net_amount,
+        "total_items": total_items,
+        "Customer_Category": customer_category,
+        "loyalty_status": loyalty_status,
+        "payment_method": payment_method,
+        "discount_applied": discount_applied,
+
     }])
 
     prediction = model.predict(input_df)[0]
@@ -100,7 +115,7 @@ def predict(
         "index.html",
         {
             "request": request,
-            "prediction": f"Predicted Price: ₹{round(prediction, 2)}",
+            "prediction": f"Predicted Avg 7-Day Spend: ₹{round(prediction, 2)}",
             "version": active_version
         }
     )
