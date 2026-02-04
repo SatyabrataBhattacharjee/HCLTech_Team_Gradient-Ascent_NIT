@@ -2,6 +2,7 @@ import yaml
 from pathlib import Path
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
 
 from src.logging.event_logger import log_message, log_event
 
@@ -36,7 +37,14 @@ def train_model(X, y):
     )
 
     # Model instantiation (config-driven later)
-    model = LinearRegression()
+    rf = RandomForestRegressor(
+    n_estimators=300,
+    random_state=42,
+    n_jobs=-1,
+    max_depth=None,
+    min_samples_split=2,
+    min_samples_leaf=1
+)
 
     model.fit(X_train, y_train)
 
